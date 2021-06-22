@@ -1,0 +1,13 @@
+{
+    "actionButtons": {
+        "defaultColor": "#FFFF00",
+        "loadNpmCommands": false,
+        "commands": [
+            {
+                "name": "Build",
+                "color": "green",
+                "command": "make test"
+            }
+        ]
+    }
+}
