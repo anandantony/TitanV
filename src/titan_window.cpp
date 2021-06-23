@@ -1,4 +1,5 @@
 #include "titan_window.hpp"
+#include <stdexcept>
 
 namespace titan
 {
@@ -20,5 +21,11 @@ namespace titan
         glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
         window = glfwCreateWindow(width, height, windowName.c_str(), nullptr, nullptr);
+    }
+
+    void TitanWindow::createWindowSurface(VkInstance instance, VkSurfaceKHR *surface)
+    {
+        if (glfwCreateWindowSurface(instance, window, nullptr, surface) != VK_SUCCESS)
+            throw std::runtime_error("Failed to create window surface");
     }
 } // namespace titan
