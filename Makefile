@@ -4,7 +4,7 @@ LDFLAGS = -lglfw -lvulkan -ldl -lpthread -lX11 -lXxf86vm -lXrandr -lXi -Iinclude
 VulkanTest: */*.cpp */*.hpp
 	g++ $(CFLAGS) -o bin/VulkanTest */*.cpp $(LDFLAGS)
 
-.PHONY: test clean
+all: test clean
 
 test: VulkanTest
 	./bin/VulkanTest

@@ -9,6 +9,11 @@
                 "command": "make test"
             },
             {
+                "name": "Build & Clean",
+                "color": "red",
+                "command": "make all"
+            },
+            {
                 "name": "Compile Shaders",
                 "color": "yellow",
                 "command": "./compile_shaders.sh"
