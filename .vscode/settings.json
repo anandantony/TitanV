@@ -7,6 +7,11 @@
                 "name": "Build",
                 "color": "green",
                 "command": "make test"
+            },
+            {
+                "name": "Compile Shaders",
+                "color": "yellow",
+                "command": "./compile_shaders.sh"
             }
         ]
     }
