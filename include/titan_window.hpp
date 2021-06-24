@@ -2,8 +2,8 @@
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-#include <string>
 
+#include <string>
 namespace titan
 {
 
@@ -16,7 +16,8 @@ namespace titan
         TitanWindow(const TitanWindow &) = delete;
         TitanWindow &operator=(const TitanWindow &) = delete;
 
-        bool shouldClose() { return glfwWindowShouldClose(window); };
+        bool shouldClose() { return glfwWindowShouldClose(window); }
+        VkExtent2D getExtent() { return {static_cast<uint32_t>(width), static_cast<uint32_t>(height)}; }
 
         void createWindowSurface(VkInstance instance, VkSurfaceKHR *surface);
 
@@ -29,4 +30,4 @@ namespace titan
         std::string windowName;
         GLFWwindow *window;
     };
-}
+} // namespace titan
