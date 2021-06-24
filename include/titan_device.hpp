@@ -39,7 +39,7 @@ namespace titan
 
         // Not copyable or movable
         TitanDevice(const TitanDevice &) = delete;
-        void operator=(const TitanDevice &) = delete;
+        TitanDevice &operator=(const TitanDevice &) = delete;
         TitanDevice(TitanDevice &&) = delete;
         TitanDevice &operator=(TitanDevice &&) = delete;
 

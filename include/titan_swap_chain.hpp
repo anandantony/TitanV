@@ -8,6 +8,7 @@
 // std lib headers
 #include <string>
 #include <vector>
+#include <memory>
 
 namespace titan
 {
@@ -18,10 +19,11 @@ namespace titan
         static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
         TitanSwapChain(TitanDevice &deviceRef, VkExtent2D windowExtent);
+        TitanSwapChain(TitanDevice &deviceRef, VkExtent2D windowExtent, std::shared_ptr<TitanSwapChain> previous);
         ~TitanSwapChain();
 
         TitanSwapChain(const TitanSwapChain &) = delete;
-        void operator=(const TitanSwapChain &) = delete;
+        TitanSwapChain &operator=(const TitanSwapChain &) = delete;
 
         VkFramebuffer getFrameBuffer(int index) { return swapChainFramebuffers[index]; }
         VkRenderPass getRenderPass() { return renderPass; }
@@ -42,6 +44,7 @@ namespace titan
         VkResult submitCommandBuffers(const VkCommandBuffer *buffers, uint32_t *imageIndex);
 
     private:
+        void init();
         void createSwapChain();
         void createImageViews();
         void createDepthResources();
@@ -72,6 +75,7 @@ namespace titan
         VkExtent2D windowExtent;
 
         VkSwapchainKHR swapChain;
+        std::shared_ptr<TitanSwapChain> oldSwapChain;
 
         std::vector<VkSemaphore> imageAvailableSemaphores;
         std::vector<VkSemaphore> renderFinishedSemaphores;

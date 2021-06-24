@@ -4,7 +4,7 @@
         "loadNpmCommands": false,
         "commands": [
             {
-                "name": "Build & Clean",
+                "name": "Linux Build",
                 "color": "yellow",
                 "command": "make all"
             }

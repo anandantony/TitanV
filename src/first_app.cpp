@@ -9,8 +9,9 @@ namespace titan
 
     FirstApp::FirstApp()
     {
+        loadModels();
         createPipelineLayout();
-        createPipeline();
+        recreateSwapChain();
         createCommandBuffers();
     }
 
@@ -25,6 +26,16 @@ namespace titan
         }
 
         vkDeviceWaitIdle(titanDevice.device());
+    }
+
+    void FirstApp::loadModels()
+    {
+        std::vector<TitanModel::Vertex> vertices{
+            {{-0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}},
+            {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+            {{0.0f, -0.5f}, {0.0f, 0.0f, 1.0f}}};
+
+        titanModel = std::make_unique<TitanModel>(titanDevice, vertices);
     }
 
     void FirstApp::createPipelineLayout()
@@ -44,12 +55,11 @@ namespace titan
 
     void FirstApp::createPipeline()
     {
+        assert(titanSwapChain != nullptr && "Cannot create a pipeline before swap chain");
+        assert(pipelineLayout != nullptr && "Cannot create a pipeline before pipeline layout");
         PipelineConfigInfo pipelineConfig{};
-        TitanPipeline::defaultPipelineConfigInfo(
-            pipelineConfig,
-            titanSwapChain.width(),
-            titanSwapChain.height());
-        pipelineConfig.renderPass = titanSwapChain.getRenderPass();
+        TitanPipeline::defaultPipelineConfigInfo(pipelineConfig);
+        pipelineConfig.renderPass = titanSwapChain->getRenderPass();
         pipelineConfig.pipelineLayout = pipelineLayout;
         titanPipeline = std::make_unique<TitanPipeline>(
             titanDevice,
@@ -58,9 +68,36 @@ namespace titan
             pipelineConfig);
     }
 
+    void FirstApp::recreateSwapChain()
+    {
+        auto extent = titanWindow.getExtent();
+        while (extent.width == 0 || extent.height == 0)
+        {
+            extent = titanWindow.getExtent();
+            glfwWaitEvents();
+        }
+
+        vkDeviceWaitIdle(titanDevice.device());
+
+        if (titanSwapChain == nullptr)
+        {
+            titanSwapChain = std::make_unique<TitanSwapChain>(titanDevice, extent);
+        }
+        else
+        {
+            titanSwapChain = std::make_unique<TitanSwapChain>(titanDevice, extent, std::move(titanSwapChain));
+            if (titanSwapChain->imageCount() != commandBuffers.size())
+            {
+                freeCommandBuffers();
+                createCommandBuffers();
+            }
+        }
+        createPipeline();
+    }
+
     void FirstApp::createCommandBuffers()
     {
-        commandBuffers.resize(titanSwapChain.imageCount());
+        commandBuffers.resize(titanSwapChain->imageCount());
 
         VkCommandBufferAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -73,53 +110,88 @@ namespace titan
         {
             throw std::runtime_error("failed to allocate command buffers!");
         }
+    }
 
-        for (int i = 0; i < commandBuffers.size(); i++)
+    void FirstApp::freeCommandBuffers()
+    {
+        vkFreeCommandBuffers(titanDevice.device(), titanDevice.getCommandPool(), static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+        commandBuffers.clear();
+    }
+
+    void FirstApp::recordCommandBuffer(int imageIndex)
+    {
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+        if (vkBeginCommandBuffer(commandBuffers[imageIndex], &beginInfo) != VK_SUCCESS)
         {
-            VkCommandBufferBeginInfo beginInfo{};
-            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            throw std::runtime_error("failed to begin recording command buffer!");
+        }
 
-            if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS)
-            {
-                throw std::runtime_error("failed to begin recording command buffer!");
-            }
+        VkRenderPassBeginInfo renderPassInfo{};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass = titanSwapChain->getRenderPass();
+        renderPassInfo.framebuffer = titanSwapChain->getFrameBuffer(imageIndex);
 
-            VkRenderPassBeginInfo renderPassInfo{};
-            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-            renderPassInfo.renderPass = titanSwapChain.getRenderPass();
-            renderPassInfo.framebuffer = titanSwapChain.getFrameBuffer(i);
+        renderPassInfo.renderArea.offset = {0, 0};
+        renderPassInfo.renderArea.extent = titanSwapChain->getSwapChainExtent();
 
-            renderPassInfo.renderArea.offset = {0, 0};
-            renderPassInfo.renderArea.extent = titanSwapChain.getSwapChainExtent();
+        std::array<VkClearValue, 2> clearValues{};
+        clearValues[0].color = {0.1f, 0.1f, 0.1f, 1.0f};
+        clearValues[1].depthStencil = {1.0f, 0};
+        renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+        renderPassInfo.pClearValues = clearValues.data();
 
-            std::array<VkClearValue, 2> clearValues{};
-            clearValues[0].color = {0.1f, 0.1f, 0.1f, 1.0f};
-            clearValues[1].depthStencil = {1.0f, 0};
-            renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-            renderPassInfo.pClearValues = clearValues.data();
+        vkCmdBeginRenderPass(commandBuffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-            vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+        VkViewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = static_cast<float>(titanSwapChain->getSwapChainExtent().width);
+        viewport.height = static_cast<float>(titanSwapChain->getSwapChainExtent().height);
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        VkRect2D scissor{{0, 0}, titanSwapChain->getSwapChainExtent()};
+        vkCmdSetViewport(commandBuffers[imageIndex], 0, 1, &viewport);
+        vkCmdSetScissor(commandBuffers[imageIndex], 0, 1, &scissor);
 
-            titanPipeline->bind(commandBuffers[i]);
-            vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+        titanPipeline->bind(commandBuffers[imageIndex]);
+        titanModel->bind(commandBuffers[imageIndex]);
+        titanModel->draw(commandBuffers[imageIndex]);
 
-            vkCmdEndRenderPass(commandBuffers[i]);
-            if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
-            {
-                throw std::runtime_error("failed to record command buffer!");
-            }
+        vkCmdEndRenderPass(commandBuffers[imageIndex]);
+        if (vkEndCommandBuffer(commandBuffers[imageIndex]) != VK_SUCCESS)
+        {
+            throw std::runtime_error("failed to record command buffer!");
         }
     }
+
     void FirstApp::drawFrame()
     {
         uint32_t imageIndex;
-        auto result = titanSwapChain.acquireNextImage(&imageIndex);
+        auto result = titanSwapChain->acquireNextImage(&imageIndex);
+
+        if (result == VK_ERROR_OUT_OF_DATE_KHR)
+        {
+            recreateSwapChain();
+            return;
+        }
+
         if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
         {
             throw std::runtime_error("failed to acquire swap chain image!");
         }
 
-        result = titanSwapChain.submitCommandBuffers(&commandBuffers[imageIndex], &imageIndex);
+        recordCommandBuffer(imageIndex);
+        result = titanSwapChain->submitCommandBuffers(&commandBuffers[imageIndex], &imageIndex);
+
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || titanWindow.wasWindowResized())
+        {
+            titanWindow.resetWindowResizedFlag();
+            recreateSwapChain();
+            return;
+        }
+
         if (result != VK_SUCCESS)
         {
             throw std::runtime_error("failed to present swap chain image!");

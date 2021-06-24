@@ -4,6 +4,7 @@
 #include "titan_pipeline.hpp"
 #include "titan_swap_chain.hpp"
 #include "titan_window.hpp"
+#include "titan_model.hpp"
 
 // std
 #include <memory>
@@ -26,16 +27,21 @@ namespace titan
         void run();
 
     private:
+        void loadModels();
         void createPipelineLayout();
         void createPipeline();
         void createCommandBuffers();
+        void freeCommandBuffers();
         void drawFrame();
+        void recreateSwapChain();
+        void recordCommandBuffer(int imageIndex);
 
-        TitanWindow titanWindow{WIDTH, HEIGHT, "Hello Vulkan!"};
+        TitanWindow titanWindow{WIDTH, HEIGHT, "Main Window"};
         TitanDevice titanDevice{titanWindow};
-        TitanSwapChain titanSwapChain{titanDevice, titanWindow.getExtent()};
+        std::unique_ptr<TitanSwapChain> titanSwapChain;
         std::unique_ptr<TitanPipeline> titanPipeline;
         VkPipelineLayout pipelineLayout;
         std::vector<VkCommandBuffer> commandBuffers;
+        std::unique_ptr<TitanModel> titanModel;
     };
 } // namespace titan
