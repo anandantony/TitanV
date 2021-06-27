@@ -1,5 +1,5 @@
 # TitanV
-A vulkan based render engine (soon to be game engine).
+A vulkan based render engine (to be integrated to a game engine).
 Currently implemented in linux.
 For other Operating Systems, customize the Makefile accordingly.
 
